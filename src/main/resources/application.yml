@@ -1,0 +1,42 @@
+##########################################################
+##################          配置          #################
+##########################################################
+
+##################          dubbo          #################
+
+dubbo:
+  application:
+    name: tools-web-tools
+    owner: zhaoch
+    organization: org.tis
+    logger: slf4j
+  registry:
+    address: zookeeper://139.196.145.67:2181
+    timeout: 50000
+  annotation:
+    package: org.tis.tools.webapp.controller
+  log4j:
+    file: logs/tools-web-tools.log
+
+
+
+###################  spring配置  ###################
+spring:
+  application:
+    name: tools-web-tools
+#  redis:
+#    host: localhost
+#    port: 8080
+#    password:
+  http:
+    converters:
+      preferred-json-mapper: fastjson
+    multipart:
+      max-request-size: 100MB #最大请求大小
+      max-file-size: 100MB #最大文件大小
+
+
+
+
+
+
