@@ -2,8 +2,10 @@ package org.tis.tools.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
+@EnableWebMvc
 @Configuration
 public class MyWebAppConfigurer extends WebMvcConfigurerAdapter {
 
@@ -13,6 +15,11 @@ public class MyWebAppConfigurer extends WebMvcConfigurerAdapter {
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**");
+        registry.addMapping("/**")
+                .allowedOrigins("http://192.168.1.106:8888")
+                .allowCredentials(true)
+                .allowedHeaders("*")
+                .allowedMethods("GET", "POST", "DELETE", "PUT")
+                .maxAge(3600);
     }
 }

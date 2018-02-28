@@ -4,11 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>org.tis</groupId>
-	<artifactId>tools</artifactId>
+	<artifactId>tools-boot-web</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>tools-web-tools</name>
+	<name>tools-boot-web</name>
 	<description>Tools project for Spring Boot</description>
 
 	<parent>

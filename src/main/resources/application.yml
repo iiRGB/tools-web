@@ -29,8 +29,8 @@ spring:
 #    port: 8080
 #    password:
   http:
-    converters:
-      preferred-json-mapper: fastjson
+#    converters:
+#      preferred-json-mapper: fastjson
     multipart:
       max-request-size: 100MB #最大请求大小
       max-file-size: 100MB #最大文件大小

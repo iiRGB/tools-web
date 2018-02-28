@@ -8,6 +8,7 @@ import org.tis.tools.webapp.util.AjaxUtils;
 
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 
@@ -27,7 +28,8 @@ public class AbfLoginFilter extends AdviceFilter {
         Subject subject = SecurityUtils.getSubject();
         // 验证是否登录
         if(subject.getPrincipal() == null) {
-            AjaxUtils.ajaxJsonAuthMessage((HttpServletResponse) response);
+
+            AjaxUtils.ajaxJsonAuthMessage((HttpServletRequest) request,(HttpServletResponse) response);
             return false;
         }
         // 验证行为权限

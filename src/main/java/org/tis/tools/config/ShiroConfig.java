@@ -200,6 +200,7 @@ public class ShiroConfig {
         Map<String, String> hashMap = new LinkedHashMap<>();
         hashMap.put("/AcAuthenticationController/checkUserStatus", "anon");
         hashMap.put("/AcAuthenticationController/login", "anon");
+        hashMap.put("/AcAuthenticationController/**", "abfLogin");
         hashMap.put("/**", "abfLogin,abfPerm");
         shiroFilter.setFilterChainDefinitionMap(hashMap);
         return shiroFilter;

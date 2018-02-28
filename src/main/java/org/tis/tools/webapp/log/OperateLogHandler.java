@@ -268,11 +268,11 @@ public class OperateLogHandler {
     }
 
     private void saveLogInfo() {
-        try {
-            logOperatorRService.createOperatorLog(LogThreadLocal.getLogBuilderLocal().getLog());
-        } catch (Exception e) {
-            logger.error("保存日志出错");
-        }
+//        try {
+//            logOperatorRService.createOperatorLog(LogThreadLocal.getLogBuilderLocal().getLog());
+//        } catch (Exception e) {
+//            logger.error("保存日志出错");
+//        }
     }
 
 
