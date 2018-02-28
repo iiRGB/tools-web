@@ -25,6 +25,7 @@ import org.tis.tools.shiro.filter.AbfPermissionFilter;
 import org.tis.tools.shiro.realm.UserRealm;
 
 import javax.servlet.Filter;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -163,8 +164,9 @@ public class ShiroConfig {
     @Bean
     public ModularRealmAuthorizer authorizer() {
         ModularRealmAuthorizer modularRealmAuthorizer = new ModularRealmAuthorizer();
+        modularRealmAuthorizer.setRealms(Collections.singleton(abfShiroRealm()));
         modularRealmAuthorizer.setPermissionResolver(this.abfPermission());
-        return new ModularRealmAuthorizer();
+        return modularRealmAuthorizer;
     }
 
     /**
@@ -189,7 +191,7 @@ public class ShiroConfig {
         Map<String, Filter> filterMap = new LinkedHashMap<>(2);
         filterMap.put("abfLogin", new AbfLoginFilter());
         filterMap.put("abfPerm", new AbfPermissionFilter());
-        shiroFilter.setFilters(filterMap);
+
         /**
          * 配置shiro拦截器链
          *
@@ -203,6 +205,7 @@ public class ShiroConfig {
         hashMap.put("/AcAuthenticationController/**", "abfLogin");
         hashMap.put("/**", "abfLogin,abfPerm");
         shiroFilter.setFilterChainDefinitionMap(hashMap);
+        shiroFilter.setFilters(filterMap);
         return shiroFilter;
     }
 
