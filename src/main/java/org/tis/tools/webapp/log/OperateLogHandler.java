@@ -3,12 +3,10 @@ package org.tis.tools.webapp.log;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import jdk.nashorn.internal.ir.annotations.Reference;
 import org.apache.commons.lang.StringUtils;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.session.Session;
 import org.aspectj.lang.JoinPoint;
-import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.Signature;
 import org.aspectj.lang.annotation.*;
 import org.aspectj.lang.reflect.MethodSignature;
@@ -18,8 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,7 +24,6 @@ import org.tis.tools.common.utils.BasicUtil;
 import org.tis.tools.model.def.JNLConstants;
 import org.tis.tools.model.po.ac.AcOperator;
 import org.tis.tools.model.vo.log.LogOperateDetail;
-import org.tis.tools.model.vo.log.OperateLogBuilder;
 import org.tis.tools.rservice.log.capable.IOperateLogRService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -37,9 +32,11 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TimerTask;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static org.tis.tools.webapp.util.AjaxUtils.RETMESSAGE;
 
@@ -47,9 +44,15 @@ import static org.tis.tools.webapp.util.AjaxUtils.RETMESSAGE;
 @Aspect
 public class OperateLogHandler {
 
-
     @Autowired
     IOperateLogRService logOperatorRService;
+
+    private final static String CHANGE_DATA = "changeData";
+    //日志记录操作延时
+    private final int OPERATE_DELAY_TIME = 10;
+
+    //异步操作记录日志的线程池
+    private ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(10);
 
     protected final Logger logger = LoggerFactory.getLogger(this.getClass());
     private JoinPoint point;
@@ -59,7 +62,6 @@ public class OperateLogHandler {
 
     @Pointcut("@annotation(org.springframework.web.bind.annotation.RequestMapping)")
     public void requestPointcut() {}
-
 
     /**
      * 统一处理 LOG4J
@@ -75,31 +77,17 @@ public class OperateLogHandler {
         Parameter[] parameters = method.getParameters();
         Object[] paramValues = point.getArgs();
         String[] paramNames = ((MethodSignature) point.getSignature()).getParameterNames();
-        int index = -1 ;
-        boolean isUpload = false;
         for (int i = 0; i< parameters.length; i++) {
-            RequestBody declaredAnnotation = parameters[i].getDeclaredAnnotation(RequestBody.class);
-            RequestParam requestParam = parameters[i].getDeclaredAnnotation(RequestParam.class);
-            if (declaredAnnotation != null) {
-                index = i;
-            }
-            if (requestParam != null) {
-                isUpload = true;
-            }
-        }
-        for(int i=0;i<paramNames.length;i++){
-            if (paramValues[i] != null &&  !ModelMap.class.isAssignableFrom(paramValues[i].getClass())
-                    && !HttpServletRequest.class.isAssignableFrom(paramValues[i].getClass())
-                    && !HttpServletResponse.class.isAssignableFrom(paramValues[i].getClass())
-                    && !MultipartFile.class.isAssignableFrom(paramValues[i].getClass())) {
-                if (i == index || isUpload) {
-                    if (paramValues[i].getClass() == String.class) {
-                        inputParamMap = JSON.parseObject(String.valueOf(paramValues[i]));
-                        break;
-                    }
+            // 找出使用 @RequestBody 注解参数的请求
+            RequestBody reqBodyAnno = parameters[i].getDeclaredAnnotation(RequestBody.class);
+            if (paramValues[i] != null) {
+                if (reqBodyAnno != null) {
                     inputParamMap = JSON.parseObject(String.valueOf(paramValues[i]));
                     break;
-                } else {
+                } else if (!ModelMap.class.isAssignableFrom(paramValues[i].getClass())
+                        && !HttpServletRequest.class.isAssignableFrom(paramValues[i].getClass())
+                        && !HttpServletResponse.class.isAssignableFrom(paramValues[i].getClass())
+                        && !MultipartFile.class.isAssignableFrom(paramValues[i].getClass())) {
                     if (inputParamMap == null) {
                         inputParamMap = new HashMap<>(6);
                     }
@@ -109,7 +97,6 @@ public class OperateLogHandler {
         }
         logger.info(" [请求] Request URI:{}; Request Method:{}; Request Body:{}",
                 BasicUtil.wrap(request.getRequestURI(), request.getMethod(), JSON.toJSONString(inputParamMap))) ;
-
 
         OperateLog log = method.getAnnotation(OperateLog.class);
         if (log != null) {
@@ -132,7 +119,6 @@ public class OperateLogHandler {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
         String objStr = JSON.toJSONString(ret.get(RETMESSAGE));
         logger.info(" [响应] Request URI:{}; Response Body:{}", BasicUtil.wrap(request.getRequestURI(), objStr)) ;
-
         Signature signature = point.getSignature();
         MethodSignature methodSignature = (MethodSignature) signature;
         Method method = methodSignature.getMethod();
@@ -143,7 +129,7 @@ public class OperateLogHandler {
 
             // 添加数据变化项（LogAbfChange）到操作日志
             JSONObject reqData = new JSONObject();
-
+            // 从请求参数中获取 changeData
             for(Object arg : point.getArgs()){
                 if (arg != null &&  String.class.equals(arg.getClass())) {
                     try{
@@ -194,39 +180,6 @@ public class OperateLogHandler {
 
     }
 
-    /**
-     * 进入OperateLog注解的controller方法前
-     * @param point
-     * @throws Throwable
-     */
-//    @Before("methodCachePointcut() && @annotation(log)")
-//    public void enterOperateController(JoinPoint point, OperateLog log) throws Throwable {
-//
-//        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
-////        HttpSession session = request.getSession();
-//        Session session = SecurityUtils.getSubject().getSession();
-//        AcOperator acOperator = (AcOperator) session.getAttribute("userInfo");
-//        OperateLogBuilder logBuilder = new OperateLogBuilder();
-//        logBuilder.start()
-//                .setOperateFrom("ABF") // FIXME 从哪设置该值
-//                .setUserId(StringUtils.equals(log.operateType(),"login") ? "" : session.getAttribute("userId").toString())
-//                .setOperatorName(StringUtils.equals(log.operateType(), "login") ? "" : acOperator.getOperatorName())
-//                .setOperateType(log.operateType())
-//                .setProcessDesc(log.operateDesc())
-//                .setRestfulUrl(request.getPathInfo());
-//        LogThreadLocal.setLogBuilderLocal(logBuilder);
-//    }
-
-//    /**
-//     * controller执行没有异常完毕后
-//     *
-//     * @param point
-//     */
-//    @AfterReturning(value = "@annotation(logAnt)", returning = "ret")
-//    public void logAfterExecution(JoinPoint point, Map<String, Object> ret, OperateLog logAnt) throws Throwable {
-//
-//
-//    }
 
     /**
      * controller执行抛出异常完毕后
@@ -268,11 +221,26 @@ public class OperateLogHandler {
     }
 
     private void saveLogInfo() {
-//        try {
-//            logOperatorRService.createOperatorLog(LogThreadLocal.getLogBuilderLocal().getLog());
-//        } catch (Exception e) {
-//            logger.error("保存日志出错");
-//        }
+
+        try {
+            executor.schedule(bussinessLog(LogThreadLocal.getLogBuilderLocal().getLog())
+                    , OPERATE_DELAY_TIME, TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            logger.error("保存日志出错");
+        }
+    }
+
+    public TimerTask bussinessLog(LogOperateDetail log) {
+        return new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    logOperatorRService.createOperatorLog(log);
+                } catch (Exception e) {
+                    logger.error("创建业务日志异常!", e);
+                }
+            }
+        };
     }
 
 

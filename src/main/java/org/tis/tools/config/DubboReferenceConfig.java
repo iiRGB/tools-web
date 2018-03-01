@@ -25,6 +25,7 @@ public class DubboReferenceConfig {
     private static final String GROUP_SYS = "sys";
     private static final String GROUP_AC = "ac";
     private static final String GROUP_OM = "om";
+    private static final String GROUP_LOG = "log";
     private static final String GROUP_JNL = "jnl";
     private static final String GROUP_BIZ = "biztrace";
     private static final String GROUP_DEVMGR = "devmgr";
@@ -194,7 +195,7 @@ public class DubboReferenceConfig {
     public ReferenceBean<IOperateLogRService> operateLogRService() {
         ReferenceBean<IOperateLogRService> ref = new ReferenceBean<>();
         ref.setInterface(IOperateLogRService.class);
-        ref.setGroup(GROUP_JNL);
+        ref.setGroup(GROUP_LOG);
         ref.setVersion("0.9");
         ref.setCheck(false);
         return ref;
